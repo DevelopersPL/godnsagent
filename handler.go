@@ -5,7 +5,7 @@ import (
 )
 
 type DNSHandler struct {
-	zones    *ZoneStore
+	zones *ZoneStore
 }
 
 func NewHandler(zones *ZoneStore) *DNSHandler {
@@ -38,10 +38,10 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		m.Ns = append(m.Ns, r)
 
 		// Resolve Authority if possible and serve as Extra
-		for _, r := range (*zone)[dns.RR_Header{Name: r.Header().Name, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
+		for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
 			m.Extra = append(m.Extra, r)
 		}
-		for _, r := range (*zone)[dns.RR_Header{Name: r.Header().Name, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
+		for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
 			m.Extra = append(m.Extra, r)
 		}
 	}
