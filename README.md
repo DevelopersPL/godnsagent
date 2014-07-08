@@ -37,6 +37,7 @@ How it works
 * Answers are marked as authoritative.
 * All NS records on the zone are returned with an answer as "Authoritative" section.
 * If possible, resolutions for NS records are added as "Extra" section.
+* An HTTP request to :5380/notify invokes a reload of zones, the reload fails gracefully
 
 Schema of zones file
 ============

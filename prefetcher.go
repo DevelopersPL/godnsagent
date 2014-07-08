@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"github.com/miekg/dns"
 	"io/ioutil"
 	"log"
@@ -18,25 +17,27 @@ type Record struct {
 	Data  string
 }
 
-func prefetch(zs *ZoneStore) {
-	var zoneUrl string
-	flag.StringVar(&zoneUrl, "z", "http://localhost/zones.json", "The URL of zones in JSON format")
-	flag.Parse()
-
+func prefetch(zs *ZoneStore, critical bool) {
 	resp, err := http.Get(zoneUrl)
-	if err != nil {
+	if err != nil && critical {
 		log.Fatal(err)
+	} else if err != nil {
+		log.Println(err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
+	if err != nil && critical {
 		log.Fatal(err)
+	} else if err != nil {
+		log.Println(err)
 	}
 
 	tmpmap := make(map[string][]Record)
 	err = json.Unmarshal(body, &tmpmap)
-	if err != nil {
+	if err != nil && critical {
 		log.Fatal("Error parsing JSON zones file: ", err)
+	} else if err != nil {
+		log.Println("Error parsing JSON zones file: ", err)
 	}
 	/*
 	    b, err := json.Marshal(&tmpmap)
@@ -46,6 +47,8 @@ func prefetch(zs *ZoneStore) {
 	   	log.Println(string(b))
 	*/
 
+	zs.m.Lock()
+	zs.store = make(map[string]Zone)
 	for key, value := range tmpmap {
 		key = dns.Fqdn(key)
 		if zs.store[key] == nil {
@@ -62,5 +65,6 @@ func prefetch(zs *ZoneStore) {
 			}
 		}
 	}
+	zs.m.Unlock()
 	log.Printf("Loaded %d zones in memory", len(zs.store))
 }

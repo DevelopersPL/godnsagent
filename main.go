@@ -11,6 +11,15 @@ import (
 	"time"
 )
 
+var (
+	zones = &ZoneStore{
+		store: make(map[string]Zone),
+		m:     new(sync.RWMutex),
+	}
+	zoneUrl  string
+	listenOn string
+)
+
 type ZoneStore struct {
 	store map[string]Zone
 	m     *sync.RWMutex
@@ -52,18 +61,13 @@ func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
 }
 
 func main() {
-	var listenOn string
+	flag.StringVar(&zoneUrl, "z", "http://localhost/zones.json", "The URL of zones in JSON format")
 	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
 	flag.Parse()
 
 	log.Println("godnsagent (2014) by Daniel Speichert is starting...")
 
-	zones := &ZoneStore{
-		store: make(map[string]Zone),
-		m:     new(sync.RWMutex),
-	}
-
-	prefetch(zones)
+	prefetch(zones, true)
 
 	server := &Server{
 		host:     listenOn,
@@ -74,6 +78,8 @@ func main() {
 	}
 
 	server.Run()
+
+	go StartHTTP()
 
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
