@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/miekg/dns"
+	"log"
 )
 
 type DNSHandler struct {
@@ -24,8 +25,26 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		return
 	} else {
 		if zone, name = h.zones.match(req.Question[0].Name, req.Question[0].Qtype); zone == nil {
-			dns.HandleFailed(w, req)
-			return
+			if recurseTo == "" {
+				dns.HandleFailed(w, req)
+				return
+			} else {
+				c := new(dns.Client)
+			Redo:
+				if in, _, err := c.Exchange(req, recurseTo); err == nil { // Second return value is RTT
+					if in.MsgHdr.Truncated {
+						c.Net = "tcp"
+						goto Redo
+					}
+
+					w.WriteMsg(in)
+					return
+				} else {
+					log.Printf("Recursive error: %+v\n", err)
+					dns.HandleFailed(w, req)
+					return
+				}
+			}
 		}
 	}
 

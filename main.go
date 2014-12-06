@@ -16,8 +16,9 @@ var (
 		store: make(map[string]Zone),
 		m:     new(sync.RWMutex),
 	}
-	zoneUrl  string
-	listenOn string
+	zoneUrl   string
+	listenOn  string
+	recurseTo string
 )
 
 type ZoneStore struct {
@@ -63,6 +64,7 @@ func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
 func main() {
 	flag.StringVar(&zoneUrl, "z", "http://localhost/zones.json", "The URL of zones in JSON format")
 	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
+	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
 	flag.Parse()
 
 	log.Println("godnsagent (2014) by Daniel Speichert is starting...")

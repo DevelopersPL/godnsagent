@@ -23,9 +23,10 @@ How to run
 ============
 * Parameter ```-z``` defines address of DNS zones. Defaults to http://localhost/zones.json
 * Parameter ```-l``` defines the local IP (interface) to listen on. Defaults to all.
+* Parameter ```-r``` enable recursive querying of specified servers for answers godnsagent can't provide itself.
 
 ```
-./godnsagent -z https://example.org/path/to/zones.json -l 127.0.0.1
+./godnsagent -z https://example.org/path/to/zones.json -l 127.0.0.1 -r 8.8.8.8:53
 ```
 
 How it works
@@ -38,6 +39,7 @@ How it works
 * All NS records on the zone are returned with an answer as "Authoritative" section.
 * If possible, resolutions for NS records are added as "Extra" section.
 * An HTTP request to :5380/notify invokes a reload of zones, the reload fails gracefully
+* If recursive querying is enabled, the question will be forwarded to the specified server
 
 Schema of zones file
 ============
