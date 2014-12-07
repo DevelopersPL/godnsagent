@@ -16,9 +16,12 @@ var (
 		store: make(map[string]Zone),
 		m:     new(sync.RWMutex),
 	}
-	zoneUrl   string
-	listenOn  string
-	recurseTo string
+	zoneUrl     string
+	listenOn    string
+	recurseTo   string
+	apiKey      string
+	buildtime   string
+	buildcommit string
 )
 
 type ZoneStore struct {
@@ -65,9 +68,12 @@ func main() {
 	flag.StringVar(&zoneUrl, "z", "http://localhost/zones.json", "The URL of zones in JSON format")
 	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
 	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
+	flag.StringVar(&apiKey, "k", "", "API key for http notifications")
 	flag.Parse()
 
 	log.Println("godnsagent (2014) by Daniel Speichert is starting...")
+	log.Println("https://github.com/DevelopersPL/godnsagent")
+	log.Printf("bult %s from commit %s", buildtime, buildcommit)
 
 	prefetch(zones, true)
 

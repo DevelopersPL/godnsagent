@@ -16,7 +16,9 @@ How to build
 ============
 ```bash
 go get github.com/miekg/dns
-go build
+git clone https://github.com/DevelopersPL/godnsagent.git
+cd godnsagent
+go build -ldflags "-X main.buildtime '`date`' -X main.buildcommit '`git log --pretty=format:'%h' -n 1`'"
 ```
 
 How to run
@@ -24,9 +26,10 @@ How to run
 * Parameter ```-z``` defines address of DNS zones. Defaults to http://localhost/zones.json
 * Parameter ```-l``` defines the local IP (interface) to listen on. Defaults to all.
 * Parameter ```-r``` enable recursive querying of specified servers for answers godnsagent can't provide itself.
+* Parameter ```-k``` sets the API key (passed as GET or form value "key" to http notification handlers)
 
 ```
-./godnsagent -z https://example.org/path/to/zones.json -l 127.0.0.1 -r 8.8.8.8:53
+./godnsagent -z https://example.org/path/to/zones.json -l 127.0.0.1 -r 8.8.8.8:53 -k secretkeyhere
 ```
 
 How it works
@@ -38,7 +41,9 @@ How it works
 * Answers are marked as authoritative.
 * All NS records on the zone are returned with an answer as "Authoritative" section.
 * If possible, resolutions for NS records are added as "Extra" section.
-* An HTTP request to :5380/notify invokes a reload of zones, the reload fails gracefully
+* An HTTP GET request to :5380/notify invokes a reload of zones (the reload fails gracefully)
+* HTTP requests require valid key passed as a GET parameter if such a key is defined
+* An HTTP POST request to :5380/notify/zones processes JSON body of request as zones (zones are merged with cache but contents are replaced)
 * If recursive querying is enabled, the question will be forwarded to the specified server
 
 Schema of zones file
