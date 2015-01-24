@@ -35,7 +35,7 @@ func prefetch(zs *ZoneStore, critical bool) {
 	tmpmap := make(map[string][]Record)
 	err = json.Unmarshal(body, &tmpmap)
 	if err != nil && critical {
-		log.Fatal("Error parsing JSON zones file: ", err)
+		log.Fatal("Error parsing JSON zones file: ", err, string(body))
 	} else if err != nil {
 		log.Println("Error parsing JSON zones file: ", err)
 	}
