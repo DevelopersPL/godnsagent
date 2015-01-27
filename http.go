@@ -1,6 +1,7 @@
 package main
 
 import (
+	"code.google.com/p/go.net/idna"
 	"encoding/json"
 	"fmt"
 	"github.com/miekg/dns"
@@ -43,15 +44,21 @@ func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 	zs.m.Lock()
 	for key, value := range tmpmap {
 		key = dns.Fqdn(key)
+		if cdn, e := idna.ToASCII(key); e == nil {
+			key = cdn
+		}
 		zs.store[key] = make(map[dns.RR_Header][]dns.RR)
 		for _, r := range value {
+			if cdn, e := idna.ToASCII(r.Name); e == nil {
+				r.Name = cdn
+			}
 			rr, err := dns.NewRR(dns.Fqdn(r.Name) + " " + r.Class + " " + r.Type + " " + r.Data)
 			if err == nil {
 				rr.Header().Ttl = r.Ttl
 				key2 := dns.RR_Header{Name: dns.Fqdn(rr.Header().Name), Rrtype: rr.Header().Rrtype, Class: rr.Header().Class}
 				zs.store[key][key2] = append(zs.store[key][key2], rr)
 			} else {
-				log.Printf("Skipping problematic record: %+v\n", r)
+				log.Printf("Skipping problematic record: %+v\nError: %+v\n", r, err)
 			}
 		}
 	}
