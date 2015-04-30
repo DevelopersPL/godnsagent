@@ -22,6 +22,7 @@ var (
 	apiKey      string
 	buildtime   string
 	buildcommit string
+	loggerFlags int
 )
 
 type ZoneStore struct {
@@ -51,7 +52,7 @@ func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
 			if t != dns.TypeDS {
 				return &z, string(b[:l])
 			} else {
-				// Continue for DS to see if we have a parent too, if so delegeate to the parent
+				// Continue for DS to see if we have a parent too, if so delegate to the parent
 				zone = &z
 				name = string(b[:l])
 			}
@@ -69,11 +70,15 @@ func main() {
 	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
 	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
 	flag.StringVar(&apiKey, "k", "", "API key for http notifications")
+	flag.IntVar(&loggerFlags, "lf", 0, "logger flags")
 	flag.Parse()
 
-	log.Println("godnsagent (2014) by Daniel Speichert is starting...")
+	// remove timestamps from log outputs (journald adds them)
+	log.SetFlags(loggerFlags)
+
+	log.Println("godnsagent (2015) by Daniel Speichert is starting...")
 	log.Println("https://github.com/DevelopersPL/godnsagent")
-	log.Printf("bult %s from commit %s", buildtime, buildcommit)
+	log.Printf("built %s from commit %s", buildtime, buildcommit)
 
 	prefetch(zones, true)
 
