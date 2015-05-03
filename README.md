@@ -27,6 +27,7 @@ How to run
 * Parameter ```-l``` defines the local IP (interface) to listen on. Defaults to all.
 * Parameter ```-r``` enable recursive querying of specified servers for answers godnsagent can't provide itself.
 * Parameter ```-k``` sets the API key (passed as GET or form value "key" to http notification handlers)
+* Parameter ```-lf``` sets the logger flags (integer): https://golang.org/pkg/log/#pkg-constants
 
 ```
 ./godnsagent -z https://example.org/path/to/zones.json -l 127.0.0.1 -r 8.8.8.8:53 -k secretkeyhere

@@ -71,7 +71,7 @@ func main() {
 	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
 	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
 	flag.StringVar(&apiKey, "k", "", "API key for http notifications")
-	flag.IntVar(&loggerFlags, "lf", 0, "logger flags")
+	flag.IntVar(&loggerFlags, "lf", log.LstdFlags, "logger flags")
 	flag.Parse()
 
 	// remove timestamps from log outputs (journald adds them)
