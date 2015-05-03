@@ -10,6 +10,7 @@ import (
 	"net/http"
 )
 
+// POST||GET /notify
 func HTTPHandler(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("key") != apiKey {
 		http.Error(w, "Auth failed: incorrect key", 403)
@@ -20,6 +21,7 @@ func HTTPHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "ok")
 }
 
+// POST /notify/zones
 func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 	zs := zones
 	if r.Method != "POST" {
@@ -41,7 +43,8 @@ func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zs.m.Lock()
+	zs.Lock()
+	defer zs.Unlock()
 	for key, value := range tmpmap {
 		key = dns.Fqdn(key)
 		if cdn, e := idna.ToASCII(key); e == nil {
@@ -62,15 +65,33 @@ func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	zs.m.Unlock()
 	fmt.Fprintf(w, "Loaded %d zones into cache\n", len(tmpmap))
 	fmt.Fprintln(w, "ok")
+}
+
+// GET /hits
+func HTTPHitsHandler(w http.ResponseWriter, r *http.Request) {
+	zs := zones
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", 405)
+	}
+	if r.FormValue("key") != apiKey {
+		http.Error(w, "Auth failed: incorrect key", 403)
+		return
+	}
+
+	zs.RLock()
+	defer zs.RUnlock()
+	w.Header().Set("Content-Type", "application/json")
+	json, _ := json.MarshalIndent(zs.hits, "", `   `)
+	fmt.Fprintf(w, "%s", json)
 }
 
 func StartHTTP() {
 	handlers := http.NewServeMux()
 	handlers.HandleFunc("/notify", HTTPHandler)
 	handlers.HandleFunc("/notify/zones", HTTPZonesHandler)
+	handlers.HandleFunc("/hits", HTTPHitsHandler)
 	httpserver := &http.Server{Addr: listenOn + ":5380", Handler: handlers}
 	go httpserver.ListenAndServe()
 	log.Println("Start HTTP notification listener on ", listenOn+":5380")

@@ -13,6 +13,7 @@ type Server struct {
 	rTimeout time.Duration
 	wTimeout time.Duration
 	zones    *ZoneStore
+	hists    *map[string]uint64
 }
 
 func (s *Server) Addr() string {

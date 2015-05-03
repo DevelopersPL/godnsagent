@@ -14,7 +14,7 @@ import (
 var (
 	zones = &ZoneStore{
 		store: make(map[string]Zone),
-		m:     new(sync.RWMutex),
+		hits:  make(map[string]uint64),
 	}
 	zoneUrl     string
 	listenOn    string
@@ -27,14 +27,15 @@ var (
 
 type ZoneStore struct {
 	store map[string]Zone
-	m     *sync.RWMutex
+	hits  map[string]uint64
+	sync.RWMutex
 }
 
 type Zone map[dns.RR_Header][]dns.RR
 
 func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
-	zs.m.RLock()
-	defer zs.m.RUnlock()
+	zs.RLock()
+	defer zs.RUnlock()
 	var zone *Zone
 	var name string
 	b := make([]byte, len(q)) // worst case, one label of length q

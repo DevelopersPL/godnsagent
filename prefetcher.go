@@ -41,7 +41,7 @@ func prefetch(zs *ZoneStore, critical bool) {
 		log.Println("Error parsing JSON zones file: ", err)
 	}
 
-	zs.m.Lock()
+	zs.Lock()
 	zs.store = make(map[string]Zone)
 	for key, value := range tmpmap {
 		key = dns.Fqdn(key)
@@ -65,6 +65,6 @@ func prefetch(zs *ZoneStore, critical bool) {
 			}
 		}
 	}
-	zs.m.Unlock()
+	zs.Unlock()
 	log.Printf("Loaded %d zones in memory", len(zs.store))
 }
