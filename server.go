@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/miekg/dns"
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 type Server struct {
@@ -13,7 +14,6 @@ type Server struct {
 	rTimeout time.Duration
 	wTimeout time.Duration
 	zones    *ZoneStore
-	hists    *map[string]uint64
 }
 
 func (s *Server) Addr() string {

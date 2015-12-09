@@ -2,13 +2,14 @@ package main
 
 import (
 	"flag"
-	"github.com/miekg/dns"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 var (
