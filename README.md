@@ -15,10 +15,10 @@ parses them, stores them in memory and serves to clients.
 How to build
 ============
 ```bash
-go get github.com/miekg/dns
 git clone https://github.com/DevelopersPL/godnsagent.git
 cd godnsagent
-go build -ldflags "-X main.buildtime '`date`' -X main.buildcommit '`git log --pretty=format:'%h' -n 1`'"
+go get
+go build -ldflags "-X main.buildtime '`date`' -X main.buildver '`git log --pretty=format:'%h' -n 1`'"
 ```
 
 How to run

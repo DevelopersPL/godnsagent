@@ -1,0 +1,32 @@
+# godnsagent config file
+# See the URL for detailed description of following options
+# https://github.com/DevelopersPL/godnsagent
+# Default values are provided below.
+
+# This is the URL from which godnsagent will pull zones in JSON format.
+# It may be HTTP or HTTPS and may contain parameters
+#ZONES_URL = http://localhost/zones.json
+
+# Interface to bind to on TCP and UDP to serve DNS.
+# Default value involves all interfaces on port 53.
+#LISTEN = 0.0.0.0:53
+
+# When the zone source does not have a matching zone, godnsagent can relay
+# the request to an external DNS server and pass the response.
+# No caching is implemented so this may be create a lot of traffic.
+#RECURSE_TO =
+
+# Defines the IP:PORT combination where HTTP API listens
+#HTTP_LISTEN = 0.0.0.0:5380
+
+# Alphanumeric API key provided for every HTTP API request
+#KEY =
+
+# SSL certificate (chain) and key for HTTPS interface where API is available
+#SSL_CERT = /etc/nginx/ssl/server.pem
+#SSL_KEY = /etc/nginx/ssl/server.key
+
+# Logger flags
+# See https://golang.org/pkg/log/#pkg-constants for reference
+# Set to 0 if you use journald
+#LOGGER_FLAGS = 3

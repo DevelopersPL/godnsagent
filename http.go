@@ -1,17 +1,19 @@
 package main
 
 import (
-	"code.google.com/p/go.net/idna"
 	"encoding/json"
 	"fmt"
-	"github.com/miekg/dns"
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"code.google.com/p/go.net/idna"
+	"github.com/codegangsta/cli"
+	"github.com/miekg/dns"
 )
 
 // POST||GET /notify
-func HTTPHandler(w http.ResponseWriter, r *http.Request) {
+func HTTPNotifyHandler(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("key") != apiKey {
 		http.Error(w, "Auth failed: incorrect key", 403)
 		return
@@ -22,8 +24,7 @@ func HTTPHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /notify/zones
-func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
-	zs := zones
+func HTTPNotifyZonesHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", 405)
 	}
@@ -35,7 +36,7 @@ func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 	tmpmap := make(map[string][]Record)
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Error parsing JSON zones file: "+err.Error(), 400)
+		http.Error(w, "Error reading response body: "+err.Error(), 400)
 		return
 	}
 	if err := json.Unmarshal(body, &tmpmap); err != nil {
@@ -43,14 +44,14 @@ func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zs.Lock()
-	defer zs.Unlock()
+	zones.Lock()
+	defer zones.Unlock()
 	for key, value := range tmpmap {
 		key = dns.Fqdn(key)
 		if cdn, e := idna.ToASCII(key); e == nil {
 			key = cdn
 		}
-		zs.store[key] = make(map[dns.RR_Header][]dns.RR)
+		zones.store[key] = make(map[dns.RR_Header][]dns.RR)
 		for _, r := range value {
 			if cdn, e := idna.ToASCII(r.Name); e == nil {
 				r.Name = cdn
@@ -59,14 +60,15 @@ func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				rr.Header().Ttl = r.Ttl
 				key2 := dns.RR_Header{Name: dns.Fqdn(rr.Header().Name), Rrtype: rr.Header().Rrtype, Class: rr.Header().Class}
-				zs.store[key][key2] = append(zs.store[key][key2], rr)
+				zones.store[key][key2] = append(zones.store[key][key2], rr)
 			} else {
 				log.Printf("Skipping problematic record: %+v\nError: %+v\n", r, err)
 			}
 		}
 	}
-	fmt.Fprintf(w, "Loaded %d zones into cache\n", len(tmpmap))
+	fmt.Fprintf(w, "Loaded %d zone(s) in cache\n", len(tmpmap))
 	fmt.Fprintln(w, "ok")
+	log.Printf("Loaded %d zone(s) in cache\n", len(tmpmap))
 }
 
 // GET /hits
@@ -87,12 +89,36 @@ func HTTPHitsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", json)
 }
 
-func StartHTTP() {
+// GET /zones
+func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", 405)
+	}
+	if r.FormValue("key") != apiKey {
+		http.Error(w, "Auth failed: incorrect key", 403)
+		return
+	}
+
+	zones.RLock()
+	defer zones.RUnlock()
+	w.Header().Set("Content-Type", "application/json")
+	json, err := json.MarshalIndent(zones.store, "", `   `)
+	if err == nil {
+		fmt.Fprintf(w, "%s", json)
+	} else {
+		http.Error(w, err.Error(), 500)
+	}
+}
+
+func StartHTTP(c *cli.Context) {
 	handlers := http.NewServeMux()
-	handlers.HandleFunc("/notify", HTTPHandler)
-	handlers.HandleFunc("/notify/zones", HTTPZonesHandler)
+	handlers.HandleFunc("/notify", HTTPNotifyHandler)
+	handlers.HandleFunc("/notify/zones", HTTPNotifyZonesHandler)
 	handlers.HandleFunc("/hits", HTTPHitsHandler)
-	httpserver := &http.Server{Addr: listenOn + ":5380", Handler: handlers}
-	go httpserver.ListenAndServe()
-	log.Println("Start HTTP notification listener on ", listenOn+":5380")
+	handlers.HandleFunc("/zones", HTTPZonesHandler)
+
+	log.Println("Starting HTTP notification listener on", c.String("http-listen"))
+	log.Fatal(http.ListenAndServeTLS(c.String("http-listen"),
+		c.String("ssl-cert"), c.String("ssl-key"), handlers))
+
 }

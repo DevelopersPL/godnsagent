@@ -1,12 +1,13 @@
 package main
 
 import (
-	"code.google.com/p/go.net/idna"
 	"encoding/json"
-	"github.com/miekg/dns"
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"code.google.com/p/go.net/idna"
+	"github.com/miekg/dns"
 )
 
 // only used in JSON
@@ -19,6 +20,7 @@ type Record struct {
 }
 
 func prefetch(zs *ZoneStore, critical bool) {
+	log.Printf("Loading zones from %s...\n", zoneUrl)
 	resp, err := http.Get(zoneUrl)
 	if err != nil && critical {
 		log.Fatal(err)

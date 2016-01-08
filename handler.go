@@ -1,19 +1,12 @@
 package main
 
 import (
-	"github.com/miekg/dns"
 	"log"
+
+	"github.com/miekg/dns"
 )
 
-type DNSHandler struct {
-	zones *ZoneStore
-}
-
-func NewHandler(zones *ZoneStore) *DNSHandler {
-	return &DNSHandler{zones}
-}
-
-func (h *DNSHandler) recurse(w dns.ResponseWriter, req *dns.Msg) {
+func recurse(w dns.ResponseWriter, req *dns.Msg) {
 	if recurseTo == "" {
 		dns.HandleFailed(w, req)
 		return
@@ -36,25 +29,26 @@ func (h *DNSHandler) recurse(w dns.ResponseWriter, req *dns.Msg) {
 	}
 }
 
-func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
+func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 	// BIND does not support answering multiple questions so we won't
 	var zone *Zone
 	var name string
+
+	zones.RLock()
+	defer zones.RUnlock()
 
 	if len(req.Question) != 1 {
 		dns.HandleFailed(w, req)
 		return
 	} else {
-		if zone, name = h.zones.match(req.Question[0].Name, req.Question[0].Qtype); zone == nil {
-			h.recurse(w, req)
+		if zone, name = zones.match(req.Question[0].Name, req.Question[0].Qtype); zone == nil {
+			recurse(w, req)
 			return
 		}
 	}
 
-	h.zones.Lock()
-	defer h.zones.Unlock()
-	h.zones.hits[name]++
-	
+	zones.hits[name]++
+
 	m := new(dns.Msg)
 	m.SetReply(req)
 
@@ -63,9 +57,9 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		m.Answer = append(m.Answer, r)
 		answerKnown = true
 	}
-	
+
 	if !answerKnown && recurseTo != "" { // we don't want to handleFailed when recursion is disabled
-		h.recurse(w, req)
+		recurse(w, req)
 		return
 	}
 
@@ -84,14 +78,6 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	m.Authoritative = true
 	w.WriteMsg(m)
-}
-
-func (h *DNSHandler) DoTCP(w dns.ResponseWriter, req *dns.Msg) {
-	h.do("tcp", w, req)
-}
-
-func (h *DNSHandler) DoUDP(w dns.ResponseWriter, req *dns.Msg) {
-	h.do("udp", w, req)
 }
 
 func UnFqdn(s string) string {

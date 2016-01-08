@@ -1,0 +1,11 @@
+[Unit]
+Description=DNS Server
+After=network.target
+
+[Service]
+EnvironmentFile=-/etc/default/godnsagent
+ExecStart=/usr/bin/godnsagent
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

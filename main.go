@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -9,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/codegangsta/cli"
 	"github.com/miekg/dns"
 )
 
@@ -18,11 +18,10 @@ var (
 		hits:  make(map[string]uint64),
 	}
 	zoneUrl     string
-	listenOn    string
 	recurseTo   string
 	apiKey      string
 	buildtime   string
-	buildcommit string
+	buildver    string
 	loggerFlags int
 )
 
@@ -68,40 +67,62 @@ func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
 }
 
 func main() {
-	flag.StringVar(&zoneUrl, "z", "http://localhost/zones.json", "The URL of zones in JSON format")
-	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
-	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
-	flag.StringVar(&apiKey, "k", "", "API key for http notifications")
-	flag.IntVar(&loggerFlags, "lf", log.LstdFlags, "logger flags")
-	flag.Parse()
-
-	// remove timestamps from log outputs (journald adds them)
-	log.SetFlags(loggerFlags)
-
-	log.Println("godnsagent (2015) by Daniel Speichert is starting...")
-	log.Println("https://github.com/DevelopersPL/godnsagent")
-	log.Printf("built %s from commit %s", buildtime, buildcommit)
-
-	prefetch(zones, true)
-
-	server := &Server{
-		host:     listenOn,
-		port:     53,
-		rTimeout: 5 * time.Second,
-		wTimeout: 5 * time.Second,
-		zones:    zones,
+	app := cli.NewApp()
+	app.Name = "godnsagent"
+	app.Usage = "Spigu Web Cloud: DNS Server Agent"
+	app.Version = buildver + " built " + buildtime
+	app.Author = "Daniel Speichert"
+	app.Email = "daniel@speichert.pl"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{Name: "zones, z", Value: "http://localhost/zones.json",
+			Usage: "The URL of zones in JSON format", EnvVar: "ZONES_URL"},
+		cli.StringFlag{Name: "listen, l", Value: "0.0.0.0:53",
+			Usage: "The IP:PORT to listen on", EnvVar: "LISTEN"},
+		cli.StringFlag{Name: "recurse, r", Value: "",
+			Usage:  "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)",
+			EnvVar: "RECURSE_TO"},
+		cli.StringFlag{Name: "http-listen", Value: "0.0.0.0:5380",
+			Usage: "IP:PORT to listen on for HTTP interface", EnvVar: "HTTP_LISTEN"},
+		cli.StringFlag{Name: "key, k", Value: "",
+			Usage:  "API key for HTTP notifications",
+			EnvVar: "KEY"},
+		cli.StringFlag{Name: "ssl-cert", Value: "/etc/nginx/ssl/server.pem",
+			Usage: "path to SSL certificate", EnvVar: "SSL_CERT"},
+		cli.StringFlag{Name: "ssl-key", Value: "/etc/nginx/ssl/server.key",
+			Usage: "path to SSL key", EnvVar: "SSL_KEY"},
+		cli.IntFlag{Name: "flags, f", Value: log.LstdFlags,
+			Usage:  "Logger flags (see https://golang.org/pkg/log/#pkg-constants)",
+			EnvVar: "LOGGER_FLAGS"},
 	}
 
-	server.Run()
+	app.Action = func(c *cli.Context) {
+		log.SetFlags(c.Int("falgs"))
+		zoneUrl = c.String("zones")
+		recurseTo = c.String("recurse")
+		apiKey = c.String("key")
 
-	go StartHTTP()
+		prefetch(zones, true)
 
-	sig := make(chan os.Signal)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	for {
-		select {
-		case s := <-sig:
-			log.Fatalf("Signal (%d) received, stopping\n", s)
+		server := &Server{
+			listen:   c.String("listen"),
+			rTimeout: 5 * time.Second,
+			wTimeout: 5 * time.Second,
+			zones:    zones,
+		}
+
+		server.Run()
+
+		go StartHTTP(c)
+
+		sig := make(chan os.Signal)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+		for {
+			select {
+			case s := <-sig:
+				log.Fatalf("Signal (%d) received, stopping\n", s)
+			}
 		}
 	}
+
+	app.Run(os.Args)
 }
