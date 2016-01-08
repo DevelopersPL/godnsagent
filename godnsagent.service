@@ -6,6 +6,7 @@ After=network.target
 EnvironmentFile=-/etc/default/godnsagent
 ExecStart=/usr/bin/godnsagent
 Restart=always
+StartLimitInterval=0
 
 [Install]
 WantedBy=multi-user.target
