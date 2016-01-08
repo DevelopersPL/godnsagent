@@ -7,9 +7,9 @@ import (
 	"log"
 	"net/http"
 
-	"code.google.com/p/go.net/idna"
 	"github.com/codegangsta/cli"
 	"github.com/miekg/dns"
+	"golang.org/x/net/idna"
 )
 
 // POST||GET /notify
