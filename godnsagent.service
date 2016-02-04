@@ -7,6 +7,8 @@ EnvironmentFile=-/etc/default/godnsagent
 ExecStart=/usr/bin/godnsagent
 Restart=always
 StartLimitInterval=0
+CPUQuota=100%
+MemoryLimit=4G
 
 [Install]
 WantedBy=multi-user.target

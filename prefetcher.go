@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/miekg/dns"
 	"golang.org/x/net/idna"
@@ -54,6 +55,7 @@ func prefetch(zs *ZoneStore, critical bool) {
 			zs.store[key] = make(map[dns.RR_Header][]dns.RR)
 		}
 		for _, r := range value {
+			r.Name = strings.ToLower(r.Name)
 			if cdn, e := idna.ToASCII(r.Name); e == nil {
 				r.Name = cdn
 			}

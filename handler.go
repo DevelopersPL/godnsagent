@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strings"
 
 	"github.com/miekg/dns"
 )
@@ -38,19 +39,33 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 	defer zones.RUnlock()
 
 	if len(req.Question) != 1 {
-		dns.HandleFailed(w, req)
+		m := new(dns.Msg)
+		m.SetReply(req)
+		m.SetRcodeFormatError(req)
+		w.WriteMsg(m)
 		return
-	} else {
-		if zone, name = zones.match(req.Question[0].Name, req.Question[0].Qtype); zone == nil {
+	}
+	req.Question[0].Name = strings.ToLower(req.Question[0].Name)
+
+	zone, name = zones.match(req.Question[0].Name, req.Question[0].Qtype)
+	if zone == nil {
+		if recurseTo != "" {
 			recurse(w, req)
-			return
+		} else {
+			m := new(dns.Msg)
+			m.SetReply(req)
+			m.SetRcode(req, dns.RcodeNameError)
+			w.WriteMsg(m)
 		}
+		return
 	}
 
 	zones.hits[name]++
 
 	m := new(dns.Msg)
 	m.SetReply(req)
+	m.Authoritative = true
+	m.RecursionAvailable = false
 
 	var answerKnown bool
 	for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: req.Question[0].Qtype, Class: req.Question[0].Qclass}] {
@@ -61,22 +76,22 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 	if !answerKnown && recurseTo != "" { // we don't want to handleFailed when recursion is disabled
 		recurse(w, req)
 		return
-	}
+	} else if !answerKnown {
+		m.Ns = (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeSOA, Class: dns.ClassINET}]
+	} else {
+		// Add Authority section
+		for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
+			m.Ns = append(m.Ns, r)
 
-	// Add Authority section
-	for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
-		m.Ns = append(m.Ns, r)
-
-		// Resolve Authority if possible and serve as Extra
-		for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
-			m.Extra = append(m.Extra, r)
+			// Resolve Authority if possible and serve as Extra
+			for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
+				m.Extra = append(m.Extra, r)
+			}
+			for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
+				m.Extra = append(m.Extra, r)
+			}
 		}
-		for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
-			m.Extra = append(m.Extra, r)
-		}
 	}
-
-	m.Authoritative = true
 	w.WriteMsg(m)
 }
 

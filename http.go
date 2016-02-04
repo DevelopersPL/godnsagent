@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/codegangsta/cli"
 	"github.com/miekg/dns"
@@ -53,6 +54,7 @@ func HTTPNotifyZonesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		zones.store[key] = make(map[dns.RR_Header][]dns.RR)
 		for _, r := range value {
+			r.Name = strings.ToLower(r.Name)
 			if cdn, e := idna.ToASCII(r.Name); e == nil {
 				r.Name = cdn
 			}
