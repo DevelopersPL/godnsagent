@@ -76,6 +76,7 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 	// check for a wildcarad record (*.zone)
 	if !answerKnown {
 		for _, r := range (*zone)[dns.RR_Header{Name: "*." + name, Rrtype: req.Question[0].Qtype, Class: req.Question[0].Qclass}] {
+			r.Header().Name = dns.Fqdn(req.Question[0].Name)
 			m.Answer = append(m.Answer, r)
 			answerKnown = true
 		}
