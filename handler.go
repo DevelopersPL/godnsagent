@@ -73,6 +73,14 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		answerKnown = true
 	}
 
+	// check for a wildcarad record (*.zone)
+	if !answerKnown {
+		for _, r := range (*zone)[dns.RR_Header{Name: "*." + name, Rrtype: req.Question[0].Qtype, Class: req.Question[0].Qclass}] {
+			m.Answer = append(m.Answer, r)
+			answerKnown = true
+		}
+	}
+
 	if !answerKnown && recurseTo != "" { // we don't want to handleFailed when recursion is disabled
 		recurse(w, req)
 		return

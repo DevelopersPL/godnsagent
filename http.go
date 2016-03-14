@@ -28,6 +28,7 @@ func HTTPNotifyHandler(w http.ResponseWriter, r *http.Request) {
 func HTTPNotifyZonesHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", 405)
+		return
 	}
 	if r.FormValue("key") != apiKey {
 		http.Error(w, "Auth failed: incorrect key", 403)
