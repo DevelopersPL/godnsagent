@@ -1,18 +1,25 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"golang.org/x/net/idna"
+
+	"github.com/boltdb/bolt"
 	"github.com/codegangsta/cli"
 	"github.com/miekg/dns"
 )
 
 var (
+	db    *bolt.DB
 	zones = &ZoneStore{
 		store: make(map[string]Zone),
 		hits:  make(map[string]uint64),
@@ -66,6 +73,89 @@ func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
 	return zone, name
 }
 
+// pre-process and write map[string][]Record into ZoneStore
+// optionally removing everything there was before
+func (zs *ZoneStore) apply(tmpmap map[string][]Record, flush bool) {
+	zs.Lock()
+	defer zs.Unlock()
+
+	if flush {
+		zs.store = make(map[string]Zone)
+	}
+
+	for key, value := range tmpmap {
+		key = dns.Fqdn(key)
+		if cdn, e := idna.ToASCII(key); e == nil {
+			key = cdn
+		}
+		zs.store[key] = make(map[dns.RR_Header][]dns.RR)
+		for _, r := range value {
+			r.Name = strings.ToLower(r.Name)
+			if cdn, e := idna.ToASCII(r.Name); e == nil {
+				r.Name = cdn
+			}
+			rr, err := dns.NewRR(dns.Fqdn(r.Name) + " " + r.Class + " " + r.Type + " " + r.Data)
+			if err == nil {
+				rr.Header().Ttl = r.Ttl
+				key2 := dns.RR_Header{Name: dns.Fqdn(rr.Header().Name), Rrtype: rr.Header().Rrtype, Class: rr.Header().Class}
+				zs.store[key][key2] = append(zs.store[key][key2], rr)
+			} else {
+				log.Printf("Skipping problematic record: %+v\nError: %+v\n", r, err)
+			}
+		}
+	}
+}
+
+// read zones from BoltDB and return them as map[string][]Record
+func dbReadZones() (zones map[string][]Record, err error) {
+	zones = make(map[string][]Record)
+	err = db.View(func(tx *bolt.Tx) (err error) {
+		b := tx.Bucket([]byte("zones"))
+		if err := b.ForEach(func(k, v []byte) error {
+			var records []Record
+			if json.Unmarshal(v, &records) == nil {
+				zones[string(k)] = records
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		return
+	})
+	return
+}
+
+// write zones to BoltDB from map[string][]Record
+// optionally flush all zones first
+func dbWriteZones(zones map[string][]Record, flush bool) (err error) {
+	err = db.Update(func(tx *bolt.Tx) (err error) {
+		if flush {
+			err := tx.DeleteBucket([]byte("zones"))
+			if err != nil {
+				fmt.Errorf("Error creating zones bucket: %s", err)
+			}
+			_, err = tx.CreateBucketIfNotExists([]byte("zones"))
+			if err != nil {
+				fmt.Errorf("Error creating zones bucket: %s", err)
+			}
+		}
+
+		b := tx.Bucket([]byte("zones"))
+		for domain, records := range zones {
+			json, err := json.MarshalIndent(records, "", `   `)
+			if err != nil {
+				return err
+			}
+			if err := b.Put([]byte(domain), json); err != nil {
+				return err
+			}
+		}
+		return
+	})
+	return
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "godnsagent"
@@ -101,7 +191,28 @@ func main() {
 		recurseTo = c.String("recurse")
 		apiKey = c.String("key")
 
-		prefetch(zones, true)
+		// open database
+		var err error
+		db, err = bolt.Open("/var/cache/godnsagent.db", 0600, &bolt.Options{Timeout: 5 * time.Second})
+		if err != nil {
+			log.Fatalln("Can't open /var/cache/godnsagent.db: ", err)
+		}
+		defer db.Close()
+
+		err = db.Update(func(tx *bolt.Tx) error {
+			_, err := tx.CreateBucketIfNotExists([]byte("zones"))
+			if err != nil {
+				return fmt.Errorf("Error creating zones bucket: %s", err)
+			}
+			return nil
+		})
+		if err != nil {
+			log.Fatal("Error initializing database", err)
+		}
+
+		if tmpmap, err := dbReadZones(); err == nil {
+			zones.apply(tmpmap, false)
+		}
 
 		server := &Server{
 			listen:   c.String("listen"),
@@ -113,6 +224,8 @@ func main() {
 		server.Run()
 
 		go StartHTTP(c)
+
+		prefetch(zones, false)
 
 		sig := make(chan os.Signal)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

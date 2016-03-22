@@ -6,11 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/codegangsta/cli"
-	"github.com/miekg/dns"
-	"golang.org/x/net/idna"
 )
 
 // POST||GET /notify
@@ -46,29 +43,8 @@ func HTTPNotifyZonesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zones.Lock()
-	defer zones.Unlock()
-	for key, value := range tmpmap {
-		key = dns.Fqdn(key)
-		if cdn, e := idna.ToASCII(key); e == nil {
-			key = cdn
-		}
-		zones.store[key] = make(map[dns.RR_Header][]dns.RR)
-		for _, r := range value {
-			r.Name = strings.ToLower(r.Name)
-			if cdn, e := idna.ToASCII(r.Name); e == nil {
-				r.Name = cdn
-			}
-			rr, err := dns.NewRR(dns.Fqdn(r.Name) + " " + r.Class + " " + r.Type + " " + r.Data)
-			if err == nil {
-				rr.Header().Ttl = r.Ttl
-				key2 := dns.RR_Header{Name: dns.Fqdn(rr.Header().Name), Rrtype: rr.Header().Rrtype, Class: rr.Header().Class}
-				zones.store[key][key2] = append(zones.store[key][key2], rr)
-			} else {
-				log.Printf("Skipping problematic record: %+v\nError: %+v\n", r, err)
-			}
-		}
-	}
+	zones.apply(tmpmap, false)
+	dbWriteZones(tmpmap, false)
 	fmt.Fprintf(w, "Loaded %d zone(s) in cache\n", len(tmpmap))
 	fmt.Fprintln(w, "ok")
 	log.Printf("Loaded %d zone(s) in cache\n", len(tmpmap))
@@ -102,15 +78,22 @@ func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zones.RLock()
-	defer zones.RUnlock()
+	tmpmap, err := dbReadZones()
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json, err := json.MarshalIndent(zones.store, "", `   `)
+	json, err := json.MarshalIndent(tmpmap, "", `   `)
 	if err == nil {
 		fmt.Fprintf(w, "%s", json)
 	} else {
 		http.Error(w, err.Error(), 500)
 	}
+
 }
 
 func StartHTTP(c *cli.Context) {

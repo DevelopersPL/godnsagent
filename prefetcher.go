@@ -5,10 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
-
-	"github.com/miekg/dns"
-	"golang.org/x/net/idna"
 )
 
 // only used in JSON
@@ -42,33 +38,10 @@ func prefetch(zs *ZoneStore, critical bool) {
 		log.Fatal("Error parsing JSON zones file: ", err, string(body))
 	} else if err != nil {
 		log.Println("Error parsing JSON zones file: ", err)
+		return
 	}
 
-	zs.Lock()
-	zs.store = make(map[string]Zone)
-	for key, value := range tmpmap {
-		key = dns.Fqdn(key)
-		if cdn, e := idna.ToASCII(key); e == nil {
-			key = cdn
-		}
-		if zs.store[key] == nil {
-			zs.store[key] = make(map[dns.RR_Header][]dns.RR)
-		}
-		for _, r := range value {
-			r.Name = strings.ToLower(r.Name)
-			if cdn, e := idna.ToASCII(r.Name); e == nil {
-				r.Name = cdn
-			}
-			rr, err := dns.NewRR(dns.Fqdn(r.Name) + " " + r.Class + " " + r.Type + " " + r.Data)
-			if err == nil {
-				rr.Header().Ttl = r.Ttl
-				key2 := dns.RR_Header{Name: dns.Fqdn(rr.Header().Name), Rrtype: rr.Header().Rrtype, Class: rr.Header().Class}
-				zs.store[key][key2] = append(zs.store[key][key2], rr)
-			} else {
-				log.Printf("Skipping problematic record: %+v\nError: %+v\n", r, err)
-			}
-		}
-	}
-	zs.Unlock()
-	log.Printf("Loaded %d zones in memory", len(zs.store))
+	zs.apply(tmpmap, true)
+	dbWriteZones(tmpmap, true)
+	log.Printf("Loaded %d zones in memory", len(tmpmap))
 }

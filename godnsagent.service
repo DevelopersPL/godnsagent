@@ -8,7 +8,7 @@ ExecStart=/usr/bin/godnsagent
 Restart=always
 StartLimitInterval=0
 CPUQuota=100%
-MemoryLimit=4G
+MemoryLimit=1G
 
 [Install]
 WantedBy=multi-user.target
