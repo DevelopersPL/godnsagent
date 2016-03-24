@@ -93,11 +93,14 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 			m.Ns = append(m.Ns, r)
 
 			// Resolve Authority if possible and serve as Extra
-			for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
-				m.Extra = append(m.Extra, r)
-			}
-			for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
-				m.Extra = append(m.Extra, r)
+			zone2, _ := zones.match(r.(*dns.NS).Ns, dns.TypeA)
+			if zone2 != nil {
+				for _, r := range (*zone2)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
+					m.Extra = append(m.Extra, r)
+				}
+				for _, r := range (*zone2)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
+					m.Extra = append(m.Extra, r)
+				}
 			}
 		}
 	}
