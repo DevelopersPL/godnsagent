@@ -92,7 +92,7 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
 			m.Ns = append(m.Ns, r)
 
-			// Resolve Authority if possible and serve as Extra
+			// Resolve Authority if possible and serve as ADDITIONAL SECTION
 			zone2, _ := zones.match(r.(*dns.NS).Ns, dns.TypeA)
 			if zone2 != nil {
 				for _, r := range (*zone2)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
@@ -103,7 +103,35 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 				}
 			}
 		}
+
+		// Resolve extra lookups for CNAMEs, SRVs, etc. and put in ADDITIONAL SECTION
+		for _, r := range m.Answer {
+			switch r.Header().Rrtype {
+			case dns.TypeCNAME:
+				zone2, _ := zones.match(r.(*dns.CNAME).Target, dns.TypeA)
+				if zone2 != nil {
+					for _, r := range (*zone2)[dns.RR_Header{Name: r.(*dns.CNAME).Target, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
+						m.Extra = append(m.Extra, r)
+					}
+					for _, r := range (*zone2)[dns.RR_Header{Name: r.(*dns.CNAME).Target, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
+						m.Extra = append(m.Extra, r)
+					}
+				}
+			case dns.TypeSRV:
+				zone2, _ := zones.match(r.(*dns.SRV).Target, dns.TypeA)
+				if zone2 != nil {
+					for _, r := range (*zone2)[dns.RR_Header{Name: r.(*dns.SRV).Target, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
+						m.Extra = append(m.Extra, r)
+					}
+					for _, r := range (*zone2)[dns.RR_Header{Name: r.(*dns.SRV).Target, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
+						m.Extra = append(m.Extra, r)
+					}
+				}
+			}
+		}
 	}
+	m.Answer = dns.Dedup(m.Answer, nil)
+	m.Extra = dns.Dedup(m.Extra, nil)
 	w.WriteMsg(m)
 }
 
