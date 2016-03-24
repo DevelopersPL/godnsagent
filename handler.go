@@ -87,7 +87,7 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		return
 	} else if !answerKnown {
 		m.Ns = (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeSOA, Class: dns.ClassINET}]
-	} else {
+	} else { // answerKnown
 		// Add Authority section
 		for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
 			m.Ns = append(m.Ns, r)

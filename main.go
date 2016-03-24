@@ -94,7 +94,7 @@ func (zs *ZoneStore) apply(tmpmap map[string][]Record, flush bool) {
 			if cdn, e := idna.ToASCII(r.Name); e == nil {
 				r.Name = cdn
 			}
-			rr, err := dns.NewRR(dns.Fqdn(r.Name) + " " + r.Class + " " + r.Type + " " + r.Data)
+			rr, err := dns.NewRR(dns.Fqdn(r.Name) + " " + r.Class + " " + r.Type + " " + strings.Replace(r.Data, ";", "\\;", -1))
 			if err == nil {
 				rr.Header().Ttl = r.Ttl
 				key2 := dns.RR_Header{Name: dns.Fqdn(rr.Header().Name), Rrtype: rr.Header().Rrtype, Class: rr.Header().Class}
@@ -186,7 +186,7 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) {
-		log.SetFlags(c.Int("falgs"))
+		log.SetFlags(c.Int("flags"))
 		zoneUrl = c.String("zones")
 		recurseTo = c.String("recurse")
 		apiKey = c.String("key")
