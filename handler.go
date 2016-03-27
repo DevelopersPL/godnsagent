@@ -60,7 +60,9 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		return
 	}
 
+	zones.hits_mx.Lock()
 	zones.hits[name]++
+	zones.hits_mx.Unlock()
 
 	m := new(dns.Msg)
 	m.SetReply(req)

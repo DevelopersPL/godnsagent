@@ -52,7 +52,6 @@ func HTTPNotifyZonesHandler(w http.ResponseWriter, r *http.Request) {
 
 // GET /hits
 func HTTPHitsHandler(w http.ResponseWriter, r *http.Request) {
-	zs := zones
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", 405)
 	}
@@ -61,10 +60,10 @@ func HTTPHitsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zs.RLock()
-	defer zs.RUnlock()
+	zones.RLock()
+	defer zones.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
-	json, _ := json.MarshalIndent(zs.hits, "", `   `)
+	json, _ := json.MarshalIndent(zones.hits, "", `   `)
 	fmt.Fprintf(w, "%s", json)
 }
 
@@ -93,7 +92,6 @@ func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		http.Error(w, err.Error(), 500)
 	}
-
 }
 
 func StartHTTP(c *cli.Context) {
@@ -106,5 +104,4 @@ func StartHTTP(c *cli.Context) {
 	log.Println("Starting HTTP notification listener on", c.String("http-listen"))
 	log.Fatal(http.ListenAndServeTLS(c.String("http-listen"),
 		c.String("ssl-cert"), c.String("ssl-key"), handlers))
-
 }

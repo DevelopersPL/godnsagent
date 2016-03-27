@@ -33,8 +33,9 @@ var (
 )
 
 type ZoneStore struct {
-	store map[string]Zone
-	hits  map[string]uint64
+	store   map[string]Zone
+	hits    map[string]uint64
+	hits_mx sync.RWMutex
 	sync.RWMutex
 }
 
