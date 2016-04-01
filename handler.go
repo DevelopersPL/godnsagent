@@ -47,14 +47,6 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 	}
 	req.Question[0].Name = strings.ToLower(req.Question[0].Name)
 
-	if req.IsEdns0() != nil {
-		m := new(dns.Msg)
-		m.SetReply(req)
-		m.SetRcode(req, dns.RcodeNotImplemented)
-		w.WriteMsg(m)
-		return
-	}
-
 	zone, name = zones.match(req.Question[0].Name, req.Question[0].Qtype)
 	if zone == nil {
 		if recurseTo != "" {
