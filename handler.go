@@ -72,6 +72,7 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 	var (
 		answerKnown bool
 		rrsetExists bool
+		noAuthority bool
 	)
 
 	for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Class: req.Question[0].Qclass}] {
@@ -99,12 +100,14 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeCNAME, Class: req.Question[0].Qclass}] {
 			m.Answer = append(m.Answer, r)
 			answerKnown = true
+			noAuthority = true
 		}
 
 		// we don't have a direct response but may find alternative record type: NS
-		for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}] {
-			m.Answer = append(m.Answer, r)
+		if (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}] != nil {
+			m.Ns = (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}]
 			answerKnown = true
+			noAuthority = true
 		}
 	}
 
@@ -120,7 +123,7 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		m.Ns = (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeSOA, Class: dns.ClassINET}]
 	} else if !answerKnown && rrsetExists {
 		m.Ns = (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeSOA, Class: dns.ClassINET}]
-	} else {
+	} else if !noAuthority {
 		// Add Authority section
 		for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
 			m.Ns = append(m.Ns, r)
