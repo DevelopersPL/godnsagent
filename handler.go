@@ -77,30 +77,38 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 	m.Authoritative = true
 	m.RecursionAvailable = false
 
-	var answerKnown bool
-	for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: req.Question[0].Qtype, Class: req.Question[0].Qclass}] {
-		m.Answer = append(m.Answer, r)
-		answerKnown = true
-	}
+	var (
+		answerKnown bool
+		rrsetExists bool
+	)
 
-	// check for a wildcard record (*.zone)
-	if !answerKnown {
-		for _, r := range (*zone)[dns.RR_Header{Name: "*." + name, Rrtype: req.Question[0].Qtype, Class: req.Question[0].Qclass}] {
-			r.Header().Name = dns.Fqdn(req.Question[0].Name)
+	for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Class: req.Question[0].Qclass}] {
+		rrsetExists = true
+		if r.Header().Rrtype == req.Question[0].Qtype {
 			m.Answer = append(m.Answer, r)
 			answerKnown = true
 		}
 	}
 
+	// check for a wildcard record (*.zone)
 	if !answerKnown {
+		for _, r := range (*zone)[dns.RR_Header{Name: "*." + name, Class: req.Question[0].Qclass}] {
+			rrsetExists = true
+			if r.Header().Rrtype == req.Question[0].Qtype {
+				r.Header().Name = dns.Fqdn(req.Question[0].Name)
+				m.Answer = append(m.Answer, r)
+				answerKnown = true
+			}
+		}
+	}
+
+	if !answerKnown && rrsetExists {
 		// we don't have a direct response but may find alternative record type: CNAME
 		for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeCNAME, Class: req.Question[0].Qclass}] {
 			m.Answer = append(m.Answer, r)
 			answerKnown = true
 		}
-	}
 
-	if !answerKnown {
 		// we don't have a direct response but may find alternative record type: NS
 		for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}] {
 			m.Answer = append(m.Answer, r)
@@ -114,9 +122,11 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		return
 	}
 
-	if !answerKnown {
+	if !answerKnown && !rrsetExists {
 		// we really don't have any record to offer
 		m.SetRcode(req, dns.RcodeNameError)
+		m.Ns = (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeSOA, Class: dns.ClassINET}]
+	} else if !answerKnown && rrsetExists {
 		m.Ns = (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeSOA, Class: dns.ClassINET}]
 	} else {
 		// Add Authority section
