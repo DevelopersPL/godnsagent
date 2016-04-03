@@ -16,6 +16,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/codegangsta/cli"
 	"github.com/miekg/dns"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -30,6 +31,7 @@ var (
 	buildtime   string
 	buildver    string
 	loggerFlags int
+	dnsReqs     *prometheus.CounterVec
 )
 
 type ZoneStore struct {
@@ -202,6 +204,7 @@ func main() {
 		}
 		defer db.Close()
 
+		// initialize database
 		err = db.Update(func(tx *bolt.Tx) error {
 			_, err := tx.CreateBucketIfNotExists([]byte("zones"))
 			if err != nil {
@@ -213,21 +216,34 @@ func main() {
 			log.Fatal("Error initializing database", err)
 		}
 
+		// read from database
 		if tmpmap, err := dbReadZones(); err == nil {
 			zones.apply(tmpmap, false)
 		}
 
+		// create prometheus counters
+		dnsReqs = prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "dns_requests_total",
+				Help: "How many DNS requests processed, partitioned by domain zone name and status code.",
+			},
+			[]string{"domain", "status"},
+		)
+		prometheus.MustRegister(dnsReqs)
+
+		// launch DNS server
 		server := &Server{
 			listen:   c.String("listen"),
 			rTimeout: 5 * time.Second,
 			wTimeout: 5 * time.Second,
 			zones:    zones,
 		}
-
 		server.Run()
 
+		// launch HTTP handler
 		go StartHTTP(c)
 
+		// request full DNS zone dump
 		prefetch(zones, false)
 
 		sig := make(chan os.Signal)

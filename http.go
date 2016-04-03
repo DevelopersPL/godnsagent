@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/codegangsta/cli"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // POST||GET /notify
@@ -94,12 +95,29 @@ func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET /metrics
+func HTTPMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", 405)
+	}
+
+	/* key-checking is currently disabled
+	if r.FormValue("key") != apiKey {
+		http.Error(w, "Auth failed: incorrect key", 403)
+		return
+	}
+	*/
+
+	prometheus.Handler().ServeHTTP(w, r)
+}
+
 func StartHTTP(c *cli.Context) {
 	handlers := http.NewServeMux()
 	handlers.HandleFunc("/notify", HTTPNotifyHandler)
 	handlers.HandleFunc("/notify/zones", HTTPNotifyZonesHandler)
 	handlers.HandleFunc("/hits", HTTPHitsHandler)
 	handlers.HandleFunc("/zones", HTTPZonesHandler)
+	handlers.HandleFunc("/metrics", HTTPMetricsHandler)
 
 	log.Println("Starting HTTP notification listener on", c.String("http-listen"))
 	log.Fatal(http.ListenAndServeTLS(c.String("http-listen"),

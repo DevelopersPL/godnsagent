@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -170,6 +171,7 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 	m.Answer = dns.Dedup(m.Answer, nil)
 	m.Extra = dns.Dedup(m.Extra, nil)
 	w.WriteMsg(m)
+	dnsReqs.WithLabelValues(name, strconv.Itoa(m.Rcode)).Inc()
 }
 
 func UnFqdn(s string) string {
