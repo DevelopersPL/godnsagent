@@ -85,7 +85,7 @@ func (zs *ZoneStore) apply(tmpmap map[string][]Record, flush bool) {
 	}
 
 	for key, value := range tmpmap {
-		key = dns.Fqdn(key)
+		key = strings.ToLower(dns.Fqdn(key))
 		if cdn, e := idna.ToASCII(key); e == nil {
 			key = cdn
 		}
@@ -98,9 +98,9 @@ func (zs *ZoneStore) apply(tmpmap map[string][]Record, flush bool) {
 			rr, err := dns.NewRR(r.Name + " " + r.Class + " " + r.Type + " " + strings.Replace(r.Data, ";", "\\;", -1))
 			if err == nil {
 				rr.Header().Ttl = r.Ttl
-				key2 := dns.RR_Header{Name: dns.Fqdn(rr.Header().Name), Class: rr.Header().Class}
+				key2 := dns.RR_Header{Name: rr.Header().Name, Class: rr.Header().Class}
 				zs.store[key][key2] = append(zs.store[key][key2], rr)
-				key3 := dns.RR_Header{Name: dns.Fqdn(rr.Header().Name), Rrtype: rr.Header().Rrtype, Class: rr.Header().Class}
+				key3 := dns.RR_Header{Name: rr.Header().Name, Rrtype: rr.Header().Rrtype, Class: rr.Header().Class}
 				zs.store[key][key3] = append(zs.store[key][key3], rr)
 			} else {
 				log.Printf("Skipping problematic record: %+v\nError: %+v\n", r, err)

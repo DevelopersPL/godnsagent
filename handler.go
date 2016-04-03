@@ -104,7 +104,7 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		}
 
 		// we don't have a direct response but may find alternative record type: NS
-		if (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}] != nil {
+		if req.Question[0].Name != name && (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}] != nil {
 			m.Ns = (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}]
 			answerKnown = true
 			noAuthority = true
