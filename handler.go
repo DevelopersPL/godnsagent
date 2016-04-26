@@ -46,9 +46,9 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		w.WriteMsg(m)
 		return
 	}
-	req.Question[0].Name = strings.ToLower(req.Question[0].Name)
+	QNameLower := strings.ToLower(req.Question[0].Name)
 
-	zone, name = zones.match(req.Question[0].Name, req.Question[0].Qtype)
+	zone, name = zones.match(QNameLower, req.Question[0].Qtype)
 	if zone == nil {
 		if recurseTo != "" {
 			recurse(w, req)
@@ -76,7 +76,7 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		noAuthority bool
 	)
 
-	for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Class: req.Question[0].Qclass}] {
+	for _, r := range (*zone)[dns.RR_Header{Name: QNameLower, Class: req.Question[0].Qclass}] {
 		rrsetExists = true
 		if r.Header().Rrtype == req.Question[0].Qtype {
 			m.Answer = append(m.Answer, r)
@@ -98,15 +98,15 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 	if !answerKnown && rrsetExists {
 		// we don't have a direct response but may find alternative record type: CNAME
-		for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeCNAME, Class: req.Question[0].Qclass}] {
+		for _, r := range (*zone)[dns.RR_Header{Name: QNameLower, Rrtype: dns.TypeCNAME, Class: req.Question[0].Qclass}] {
 			m.Answer = append(m.Answer, r)
 			answerKnown = true
 			noAuthority = true
 		}
 
 		// we don't have a direct response but may find alternative record type: NS
-		if req.Question[0].Name != name && (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}] != nil {
-			m.Ns = (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}]
+		if QNameLower != name && (*zone)[dns.RR_Header{Name: QNameLower, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}] != nil {
+			m.Ns = (*zone)[dns.RR_Header{Name: QNameLower, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}]
 			answerKnown = true
 			noAuthority = true
 		}
