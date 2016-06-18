@@ -169,7 +169,7 @@ func main() {
 	app.Author = "Daniel Speichert"
 	app.Email = "daniel@speichert.pl"
 	app.Flags = []cli.Flag{
-		cli.StringFlag{Name: "zones, z", Value: "http://localhost/zones.json",
+		cli.StringFlag{Name: "zones, z", Value: "",
 			Usage: "The URL of zones in JSON format", EnvVar: "ZONES_URL"},
 		cli.StringFlag{Name: "listen, l", Value: "0.0.0.0:53",
 			Usage: "The IP:PORT to listen on", EnvVar: "LISTEN"},
@@ -244,7 +244,9 @@ func main() {
 		go StartHTTP(c)
 
 		// request full DNS zone dump
-		prefetch(zones, false)
+		if zoneUrl != "" {
+			prefetch(zones, false)
+		}
 
 		sig := make(chan os.Signal)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
