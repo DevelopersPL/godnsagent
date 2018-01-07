@@ -97,6 +97,9 @@ func (zs *ZoneStore) apply(tmpmap map[string][]Record, flush bool) {
 			if cdn, e := idna.ToASCII(r.Name); e == nil {
 				r.Name = cdn
 			}
+			if r.Type == "TXT" {
+				r.Data = "\"" + strings.Replace(r.Data, "\"", "\\\"", -1) + "\""
+			}
 			rr, err := dns.NewRR(r.Name + " " + r.Class + " " + r.Type + " " + strings.Replace(r.Data, ";", "\\;", -1))
 			if err == nil {
 				rr.Header().Ttl = r.Ttl
