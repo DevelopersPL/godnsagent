@@ -84,26 +84,42 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 		}
 	}
 
+	SubQNameLower := strings.TrimSuffix(QNameLower, name)
+	splitSubQNameLower := strings.Split(SubQNameLower, ".")
+	if len(splitSubQNameLower) > 3 {
+		splitSubQNameLower = splitSubQNameLower[len(splitSubQNameLower)-3:]
+	}
+
 	// check for a wildcard record (*.zone)
 	if !answerKnown {
-		for _, r := range (*zone)[dns.RR_Header{Name: "*." + name, Class: req.Question[0].Qclass}] {
-			rrsetExists = true
-			if r.Header().Rrtype == req.Question[0].Qtype {
-				r.Header().Name = dns.Fqdn(req.Question[0].Name)
-				m.Answer = append(m.Answer, r)
-				answerKnown = true
+		for i := 1; i < len(splitSubQNameLower); i++ {
+			part := strings.Join(splitSubQNameLower[i:], ".")
+			for _, r := range (*zone)[dns.RR_Header{Name: "*." + part + name, Class: req.Question[0].Qclass}] {
+				rrsetExists = true
+				if r.Header().Rrtype == req.Question[0].Qtype {
+					r.Header().Name = dns.Fqdn(req.Question[0].Name)
+					m.Answer = append(m.Answer, r)
+					answerKnown = true
+				}
+			}
+			if answerKnown {
+				break
+			}
+			if rrsetExists {
+				for _, r := range (*zone)[dns.RR_Header{Name: "*." + part + name, Rrtype: dns.TypeCNAME, Class: req.Question[0].Qclass}] {
+					rrsetExists = true
+					r.Header().Name = dns.Fqdn(req.Question[0].Name)
+					m.Answer = append(m.Answer, r)
+					answerKnown = true
+				}
+			}
+			if answerKnown {
+				break
 			}
 		}
 	}
 
 	if !answerKnown && rrsetExists {
-		// we don't have a direct response but may find alternative record type: CNAME
-		for _, r := range (*zone)[dns.RR_Header{Name: QNameLower, Rrtype: dns.TypeCNAME, Class: req.Question[0].Qclass}] {
-			m.Answer = append(m.Answer, r)
-			answerKnown = true
-			noAuthority = true
-		}
-
 		// we don't have a direct response but may find alternative record type: NS
 		if QNameLower != name && (*zone)[dns.RR_Header{Name: QNameLower, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}] != nil {
 			m.Ns = (*zone)[dns.RR_Header{Name: QNameLower, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}]

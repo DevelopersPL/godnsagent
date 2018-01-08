@@ -188,6 +188,8 @@ func main() {
 		cli.IntFlag{Name: "flags, f", Value: log.LstdFlags,
 			Usage:  "Logger flags (see https://golang.org/pkg/log/#pkg-constants)",
 			EnvVar: "LOGGER_FLAGS"},
+		cli.StringFlag{Name: "cache-db", Value: "/var/cache/godnsagent.db",
+			Usage: "path to cache DB file", EnvVar: "CACHE_DB"},
 	}
 
 	app.Action = func(c *cli.Context) {
@@ -198,9 +200,9 @@ func main() {
 
 		// open database
 		var err error
-		db, err = bolt.Open("/var/cache/godnsagent.db", 0600, &bolt.Options{Timeout: 5 * time.Second})
+		db, err = bolt.Open(c.String("cache-db"), 0600, &bolt.Options{Timeout: 5 * time.Second})
 		if err != nil {
-			log.Fatalln("Can't open /var/cache/godnsagent.db: ", err)
+			log.Fatalln("Can't open "+c.String("cache-db")+": ", err)
 		}
 		defer db.Close()
 
