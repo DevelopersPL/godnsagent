@@ -120,6 +120,13 @@ func handleDNS(w dns.ResponseWriter, req *dns.Msg) {
 	}
 
 	if !answerKnown && rrsetExists {
+		// we don't have a direct response but may find alternative record type: CNAME
+		for _, r := range (*zone)[dns.RR_Header{Name: QNameLower, Rrtype: dns.TypeCNAME, Class: req.Question[0].Qclass}] {
+			m.Answer = append(m.Answer, r)
+			answerKnown = true
+			noAuthority = true
+		}
+
 		// we don't have a direct response but may find alternative record type: NS
 		if QNameLower != name && (*zone)[dns.RR_Header{Name: QNameLower, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}] != nil {
 			m.Ns = (*zone)[dns.RR_Header{Name: QNameLower, Rrtype: dns.TypeNS, Class: req.Question[0].Qclass}]
