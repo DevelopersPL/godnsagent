@@ -236,7 +236,6 @@ func main() {
 			},
 			[]string{"domain", "status"},
 		)
-		prometheus.MustRegister(dnsReqs)
 
 		// launch DNS server
 		server := &Server{
