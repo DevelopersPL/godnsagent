@@ -3,12 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/codegangsta/cli"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // POST||GET /notify
@@ -18,7 +18,9 @@ func HTTPNotifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("Got HTTP prefetch notification, reloading zones...")
-	prefetch(zones, false)
+	if zoneUrl != "" {
+		prefetch(zones, false)
+	}
 	fmt.Fprintln(w, "ok")
 }
 
@@ -108,7 +110,7 @@ func HTTPMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	*/
 
-	prometheus.Handler().ServeHTTP(w, r)
+	promhttp.Handler().ServeHTTP(w, r)
 }
 
 func StartHTTP(c *cli.Context) {
