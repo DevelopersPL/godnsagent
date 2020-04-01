@@ -186,6 +186,8 @@ func main() {
 		&cli.StringFlag{Name: "key, k", Value: "",
 			Usage:   "API key for HTTP notifications",
 			EnvVars: []string{"KEY"}},
+		&cli.BoolFlag{Name: "https", Value: true,
+			Usage: "Use HTTPS instead of HTTP", EnvVars: []string{"HTTPS"}},
 		&cli.StringFlag{Name: "ssl-cert", Value: "/etc/nginx/ssl/server.pem",
 			Usage: "path to SSL certificate", EnvVars: []string{"SSL_CERT"}},
 		&cli.StringFlag{Name: "ssl-key", Value: "/etc/nginx/ssl/server.key",

@@ -122,6 +122,10 @@ func StartHTTP(c *cli.Context) {
 	handlers.HandleFunc("/metrics", HTTPMetricsHandler)
 
 	log.Println("Starting HTTP notification listener on", c.String("http-listen"))
-	log.Fatal(http.ListenAndServeTLS(c.String("http-listen"),
-		c.String("ssl-cert"), c.String("ssl-key"), handlers))
+	if c.Bool("https") {
+		log.Fatal(http.ListenAndServeTLS(c.String("http-listen"),
+			c.String("ssl-cert"), c.String("ssl-key"), handlers))
+	} else {
+		log.Fatal(http.ListenAndServe(c.String("http-listen"), handlers))
+	}
 }
