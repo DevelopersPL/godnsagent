@@ -13,10 +13,11 @@ import (
 
 	"golang.org/x/net/idna"
 
-	"github.com/boltdb/bolt"
 	"github.com/codegangsta/cli"
 	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	bolt "go.etcd.io/bbolt"
 )
 
 var (
@@ -228,7 +229,7 @@ func main() {
 		}
 
 		// create prometheus counters
-		dnsReqs = prometheus.NewCounterVec(
+		dnsReqs = promauto.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "dns_requests_total",
 				Help: "How many DNS requests processed, partitioned by domain zone name and status code.",

@@ -3,12 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/codegangsta/cli"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // POST||GET /notify
