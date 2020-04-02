@@ -28,6 +28,8 @@ How to run
 * Parameter ```-r``` enable recursive querying of specified servers for answers godnsagent can't provide itself.
 * Parameter ```-k``` sets the API key (passed as GET or form value "key" to http notification handlers)
 * Parameter ```-lf``` sets the logger flags (integer): https://golang.org/pkg/log/#pkg-constants
+* Parameter ```--https``` configures the http server to use https. Defaults to true.
+* Parameter ```--zones-reload-interval``` defines the interval in seconds to reload the DNS zones or disables auto reload if set to 0. Defaults to 0.
 
 ```
 ./godnsagent -z https://example.org/path/to/zones.json -l 127.0.0.1 -r 8.8.8.8:53 -k secretkeyhere

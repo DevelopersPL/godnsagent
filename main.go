@@ -162,6 +162,12 @@ func dbWriteZones(zones map[string][]Record, flush bool) (err error) {
 	return
 }
 
+func startAutoReload(reloadInterval int64) {
+	for range time.Tick(time.Duration(reloadInterval) * time.Second) {
+		prefetch(zones, false)
+	}
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "godnsagent"
@@ -176,6 +182,8 @@ func main() {
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{Name: "zones, z", Value: "",
 			Usage: "The URL of zones in JSON format", EnvVars: []string{"ZONES_URL"}},
+		&cli.Int64Flag{Name: "zones-reload-interval", Value: 0,
+			Usage: "The reload interval of the zones URL in seconds (0=disabled)", EnvVars: []string{"ZONES_RELOAD_INTERVAL"}},
 		&cli.StringFlag{Name: "listen, l", Value: "0.0.0.0:53",
 			Usage: "The IP:PORT to listen on", EnvVars: []string{"LISTEN"}},
 		&cli.StringFlag{Name: "recurse, r", Value: "",
@@ -254,6 +262,11 @@ func main() {
 		// request full DNS zone dump
 		if zoneUrl != "" {
 			prefetch(zones, false)
+
+			reloadInterval := c.Int64("zones-reload-interval")
+			if reloadInterval > 0 {
+				go startAutoReload(reloadInterval)
+			}
 		}
 
 		sig := make(chan os.Signal)
