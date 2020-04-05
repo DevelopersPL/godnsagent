@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/codegangsta/cli"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // POST||GET /notify
@@ -18,7 +18,9 @@ func HTTPNotifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("Got HTTP prefetch notification, reloading zones...")
-	prefetch(zones, false)
+	if zoneUrl != "" {
+		prefetch(zones, false)
+	}
 	fmt.Fprintln(w, "ok")
 }
 
@@ -108,7 +110,7 @@ func HTTPMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	*/
 
-	prometheus.Handler().ServeHTTP(w, r)
+	promhttp.Handler().ServeHTTP(w, r)
 }
 
 func StartHTTP(c *cli.Context) {
@@ -120,6 +122,10 @@ func StartHTTP(c *cli.Context) {
 	handlers.HandleFunc("/metrics", HTTPMetricsHandler)
 
 	log.Println("Starting HTTP notification listener on", c.String("http-listen"))
-	log.Fatal(http.ListenAndServeTLS(c.String("http-listen"),
-		c.String("ssl-cert"), c.String("ssl-key"), handlers))
+	if c.Bool("https") {
+		log.Fatal(http.ListenAndServeTLS(c.String("http-listen"),
+			c.String("ssl-cert"), c.String("ssl-key"), handlers))
+	} else {
+		log.Fatal(http.ListenAndServe(c.String("http-listen"), handlers))
+	}
 }

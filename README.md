@@ -23,11 +23,13 @@ go build -ldflags "-X main.buildtime '`date`' -X main.buildver '`git log --prett
 
 How to run
 ============
-* Parameter ```-z``` defines address of DNS zones. Defaults to http://localhost/zones.json
+* Parameter ```-z``` defines address of DNS zones. Defaults to empty.
 * Parameter ```-l``` defines the local IP (interface) to listen on. Defaults to all.
 * Parameter ```-r``` enable recursive querying of specified servers for answers godnsagent can't provide itself.
 * Parameter ```-k``` sets the API key (passed as GET or form value "key" to http notification handlers)
 * Parameter ```-lf``` sets the logger flags (integer): https://golang.org/pkg/log/#pkg-constants
+* Parameter ```--https``` configures the http server to use https. Defaults to true.
+* Parameter ```--zones-reload-interval``` defines the interval in seconds to reload the DNS zones or disables auto reload if set to 0. Defaults to 0.
 
 ```
 ./godnsagent -z https://example.org/path/to/zones.json -l 127.0.0.1 -r 8.8.8.8:53 -k secretkeyhere
@@ -35,14 +37,14 @@ How to run
 
 How it works
 ============
-* Once you start the program, it will try to download the zones JSON document.
+* Once you start the program, it will try to download the zones JSON document if the url is not empty.
 * If the download fails, the program will fail (exit with error code).
 * It binds to ports 53 on TCP and UDP and serves queries.
 * The longest matching zone is chosen.
 * Answers are marked as authoritative.
 * All NS records on the zone are returned with an answer as "Authoritative" section.
 * If possible, resolutions for NS records are added as "Extra" section.
-* An HTTP GET request to :5380/notify invokes a reload of zones (the reload fails gracefully)
+* An HTTP GET request to :5380/notify invokes a reload of zones if the url is not empty (the reload fails gracefully)
 * HTTP requests require valid key passed as a GET parameter if such a key is defined
 * An HTTP POST request to :5380/notify/zones processes JSON body of request as zones (zones are merged with cache but contents are replaced)
 * If recursive querying is enabled, the question will be forwarded to the specified server

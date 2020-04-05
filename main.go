@@ -13,10 +13,11 @@ import (
 
 	"golang.org/x/net/idna"
 
-	"github.com/boltdb/bolt"
 	"github.com/codegangsta/cli"
 	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	bolt "go.etcd.io/bbolt"
 )
 
 var (
@@ -161,38 +162,52 @@ func dbWriteZones(zones map[string][]Record, flush bool) (err error) {
 	return
 }
 
+func startAutoReload(reloadInterval int64) {
+	for range time.Tick(time.Duration(reloadInterval) * time.Second) {
+		prefetch(zones, false)
+	}
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "godnsagent"
 	app.Usage = "Spigu Web Cloud: DNS Server Agent"
 	app.Version = buildver + " built " + buildtime
-	app.Author = "Daniel Speichert"
-	app.Email = "daniel@speichert.pl"
+	app.Authors = []*cli.Author{
+		{
+			Name:  "Daniel Speichert",
+			Email: "daniel@speichert.pl",
+		},
+	}
 	app.Flags = []cli.Flag{
-		cli.StringFlag{Name: "zones, z", Value: "http://localhost/zones.json",
-			Usage: "The URL of zones in JSON format", EnvVar: "ZONES_URL"},
-		cli.StringFlag{Name: "listen, l", Value: "0.0.0.0:53",
-			Usage: "The IP:PORT to listen on", EnvVar: "LISTEN"},
-		cli.StringFlag{Name: "recurse, r", Value: "",
-			Usage:  "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)",
-			EnvVar: "RECURSE_TO"},
-		cli.StringFlag{Name: "http-listen", Value: "0.0.0.0:5380",
-			Usage: "IP:PORT to listen on for HTTP interface", EnvVar: "HTTP_LISTEN"},
-		cli.StringFlag{Name: "key, k", Value: "",
-			Usage:  "API key for HTTP notifications",
-			EnvVar: "KEY"},
-		cli.StringFlag{Name: "ssl-cert", Value: "/etc/nginx/ssl/server.pem",
-			Usage: "path to SSL certificate", EnvVar: "SSL_CERT"},
-		cli.StringFlag{Name: "ssl-key", Value: "/etc/nginx/ssl/server.key",
-			Usage: "path to SSL key", EnvVar: "SSL_KEY"},
-		cli.IntFlag{Name: "flags, f", Value: log.LstdFlags,
-			Usage:  "Logger flags (see https://golang.org/pkg/log/#pkg-constants)",
-			EnvVar: "LOGGER_FLAGS"},
-		cli.StringFlag{Name: "cache-db", Value: "/var/cache/godnsagent.db",
-			Usage: "path to cache DB file", EnvVar: "CACHE_DB"},
+		&cli.StringFlag{Name: "zones, z", Value: "",
+			Usage: "The URL of zones in JSON format", EnvVars: []string{"ZONES_URL"}},
+		&cli.Int64Flag{Name: "zones-reload-interval", Value: 0,
+			Usage: "The reload interval of the zones URL in seconds (0=disabled)", EnvVars: []string{"ZONES_RELOAD_INTERVAL"}},
+		&cli.StringFlag{Name: "listen, l", Value: "0.0.0.0:53",
+			Usage: "The IP:PORT to listen on", EnvVars: []string{"LISTEN"}},
+		&cli.StringFlag{Name: "recurse, r", Value: "",
+			Usage:   "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)",
+			EnvVars: []string{"RECURSE_TO"}},
+		&cli.StringFlag{Name: "http-listen", Value: "0.0.0.0:5380",
+			Usage: "IP:PORT to listen on for HTTP interface", EnvVars: []string{"HTTP_LISTEN"}},
+		&cli.StringFlag{Name: "key, k", Value: "",
+			Usage:   "API key for HTTP notifications",
+			EnvVars: []string{"KEY"}},
+		&cli.BoolFlag{Name: "https", Value: true,
+			Usage: "Use HTTPS instead of HTTP", EnvVars: []string{"HTTPS"}},
+		&cli.StringFlag{Name: "ssl-cert", Value: "/etc/nginx/ssl/server.pem",
+			Usage: "path to SSL certificate", EnvVars: []string{"SSL_CERT"}},
+		&cli.StringFlag{Name: "ssl-key", Value: "/etc/nginx/ssl/server.key",
+			Usage: "path to SSL key", EnvVars: []string{"SSL_KEY"}},
+		&cli.IntFlag{Name: "flags, f", Value: log.LstdFlags,
+			Usage:   "Logger flags (see https://golang.org/pkg/log/#pkg-constants)",
+			EnvVars: []string{"LOGGER_FLAGS"}},
+		&cli.StringFlag{Name: "cache-db", Value: "/var/cache/godnsagent.db",
+			Usage: "path to cache DB file", EnvVars: []string{"CACHE_DB"}},
 	}
 
-	app.Action = func(c *cli.Context) {
+	app.Action = func(c *cli.Context) error {
 		log.SetFlags(c.Int("flags"))
 		zoneUrl = c.String("zones")
 		recurseTo = c.String("recurse")
@@ -224,14 +239,13 @@ func main() {
 		}
 
 		// create prometheus counters
-		dnsReqs = prometheus.NewCounterVec(
+		dnsReqs = promauto.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "dns_requests_total",
 				Help: "How many DNS requests processed, partitioned by domain zone name and status code.",
 			},
 			[]string{"domain", "status"},
 		)
-		prometheus.MustRegister(dnsReqs)
 
 		// launch DNS server
 		server := &Server{
@@ -246,7 +260,14 @@ func main() {
 		go StartHTTP(c)
 
 		// request full DNS zone dump
-		prefetch(zones, false)
+		if zoneUrl != "" {
+			prefetch(zones, false)
+
+			reloadInterval := c.Int64("zones-reload-interval")
+			if reloadInterval > 0 {
+				go startAutoReload(reloadInterval)
+			}
+		}
 
 		sig := make(chan os.Signal)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
