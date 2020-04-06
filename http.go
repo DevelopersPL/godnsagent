@@ -7,8 +7,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/codegangsta/cli"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/urfave/cli/v2"
 )
 
 // POST||GET /notify
@@ -66,8 +66,8 @@ func HTTPHitsHandler(w http.ResponseWriter, r *http.Request) {
 	zones.RLock()
 	defer zones.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
-	json, _ := json.MarshalIndent(zones.hits, "", `   `)
-	fmt.Fprintf(w, "%s", json)
+	jsonData, _ := json.MarshalIndent(zones.hits, "", `   `)
+	fmt.Fprintf(w, "%s", jsonData)
 }
 
 // GET /zones
@@ -89,9 +89,9 @@ func HTTPZonesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json, err := json.MarshalIndent(tmpmap, "", `   `)
+	jsonData, err := json.MarshalIndent(tmpmap, "", `   `)
 	if err == nil {
-		fmt.Fprintf(w, "%s", json)
+		fmt.Fprintf(w, "%s", jsonData)
 	} else {
 		http.Error(w, err.Error(), 500)
 	}
@@ -121,11 +121,12 @@ func StartHTTP(c *cli.Context) {
 	handlers.HandleFunc("/zones", HTTPZonesHandler)
 	handlers.HandleFunc("/metrics", HTTPMetricsHandler)
 
-	log.Println("Starting HTTP notification listener on", c.String("http-listen"))
 	if c.Bool("https") {
+		log.Println("Starting HTTPS notification listener on", c.String("http-listen"))
 		log.Fatal(http.ListenAndServeTLS(c.String("http-listen"),
 			c.String("ssl-cert"), c.String("ssl-key"), handlers))
 	} else {
+		log.Println("Starting HTTP notification listener on", c.String("http-listen"))
 		log.Fatal(http.ListenAndServe(c.String("http-listen"), handlers))
 	}
 }
