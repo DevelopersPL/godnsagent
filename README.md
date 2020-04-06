@@ -62,23 +62,23 @@ Schema of zones file
 
 ```json
 {
-  "spigu.com.": [
-    {"name": "spigu.com.", "type": "A", "tTl": 500, "data": "123.123.123.123"},
-    {"name": "b.spigu.com.", "type": "A", "Class": "CH", "Ttl": 300, "data": "123.123.123.124"},
-    {"name": "spigu.com", "type": "MX", "Class": "IN", "Ttl": 305, "data": "5 email.spigu.net."},
-    {"name": "spigu.com", "type": "NS", "data": "marley.spigu.com."},
-    {"name": "spigu.com", "type": "NS", "Class": "IN", "Ttl": 300, "data": "abc.spigu.com."},
-    {"name": "spigu.com", "type": "SOA", "TTL": 300, "data": "abc.spigu.com. hostmaster.spigu.com. 1399838297 21600 3600 1814400 300"}
+  "example.com.": [
+    {"name": "example.com.", "type": "A", "tTl": 500, "data": "123.123.123.123"},
+    {"name": "b.example.com.", "type": "A", "Class": "CH", "Ttl": 300, "data": "123.123.123.124"},
+    {"name": "example.com", "type": "MX", "Class": "IN", "Ttl": 305, "data": "5 email.example.net."},
+    {"name": "example.com", "type": "NS", "data": "marley.example.com."},
+    {"name": "example.com", "type": "NS", "Class": "IN", "Ttl": 300, "data": "abc.example.com."},
+    {"name": "example.com", "type": "SOA", "TTL": 300, "data": "abc.example.com. hostmaster.example.com. 1399838297 21600 3600 1814400 300"}
   ],
-  "spigu.net.": [
-    {"name": "spigu.net.", "type": "A", "tTl": 500, "data": "123.123.123.123"},
-    {"name": "b.spigu.net.", "type": "A", "Class": "CH", "Ttl": 300, "data": "123.123.123.125"},
-    {"name": "spigu.net", "type": "MX", "Class": "IN", "Ttl": 305, "data": "5 email.spigu.net."},
-    {"name": "spigu.net", "type": "NS", "data": "marley.spigu.net."},
-    {"name": "spigu.net", "type": "NS", "Class": "IN", "Ttl": 300, "data": "abc.spigu.net."},
-    {"name": "abc.spigu.net", "type": "A", "data": "123.123.123.100"},
-    {"name": "marley.spigu.net", "type": "A", "data": "123.123.123.101"},
-    {"name": "spigu.net", "type": "SOA", "TTL": 300, "data": "marley.spigu.net. hostmaster.spigu.net. 1399838297 21600 3600 1814400 300"}
+  "example.net.": [
+    {"name": "example.net.", "type": "A", "tTl": 500, "data": "123.123.123.123"},
+    {"name": "b.example.net.", "type": "A", "Class": "CH", "Ttl": 300, "data": "123.123.123.125"},
+    {"name": "example.net", "type": "MX", "Class": "IN", "Ttl": 305, "data": "5 email.example.net."},
+    {"name": "example.net", "type": "NS", "data": "marley.example.net."},
+    {"name": "example.net", "type": "NS", "Class": "IN", "Ttl": 300, "data": "abc.example.net."},
+    {"name": "abc.example.net", "type": "A", "data": "123.123.123.100"},
+    {"name": "def.example.net", "type": "A", "data": "123.123.123.101"},
+    {"name": "example.net", "type": "SOA", "TTL": 300, "data": "def.example.net. hostmaster.example.net. 1399838297 21600 3600 1814400 300"}
   ]
 }
 ```

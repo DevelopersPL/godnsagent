@@ -172,7 +172,7 @@ func startAutoReload(reloadInterval int64) {
 func main() {
 	app := cli.NewApp()
 	app.Name = "godnsagent"
-	app.Usage = "Spigu Web Cloud: DNS Server Agent"
+	app.Usage = "Minimalistic DNS Server/Agent written in Go"
 	app.Version = version + " " + commit + " built " + date
 	app.Authors = []*cli.Author{
 		{
